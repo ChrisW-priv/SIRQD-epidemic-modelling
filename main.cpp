@@ -1,5 +1,5 @@
 #include <iostream>
-
+#include "SortedSparseMatrix.h"
 
 enum State{
     Susceptible,
@@ -33,8 +33,8 @@ inline int sim_step(int sim_step_number, const SimulationParameters& params, Age
 
 int main() {
     constexpr SimulationParameters params{};
-    constexpr int n_agents = 10'000;
-    constexpr int n_steps = 50;
+    constexpr uint32_t n_agents = 10'000;
+    constexpr uint8_t n_steps = 50;
 
     Agent agents[n_agents]{};
 
