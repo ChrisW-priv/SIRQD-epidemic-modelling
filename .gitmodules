@@ -1,0 +1,3 @@
+[submodule "SortedSparseMatrix"]
+	path = SortedSparseMatrix
+	url = https://github.com/ChrisW-priv/SortedSparseMatrix.git
