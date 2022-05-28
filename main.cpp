@@ -1,6 +1,5 @@
 #include <iostream>
 #include <memory>
-#include <cstring>
 #include "SortedSparseMatrix.h"
 
 enum State{
@@ -34,6 +33,35 @@ struct SimulationState{
     uint16_t Quarantined = 0;
     uint16_t Deceased = 0;
 
+    /// modifies the state of Simulation state to match how many agents there are of given state
+    void count_states(std::unique_ptr<Agent[]> & agents, uint16_t n_agents){
+        this->Susceptible=0;
+        this->Infected=0;
+        this->Recovered=0;
+        this->Quarantined=0;
+        this->Deceased=0;
+
+        for (uint16_t i=0;i<n_agents;++i){
+            switch (agents[i].state) {
+                case State::Susceptible:
+                    this->Susceptible+=1;
+                    break;
+                case State::Infected:
+                    this->Infected+=1;
+                    break;
+                case State::Recovered:
+                    this->Recovered+=1;
+                    break;
+                case State::Quarantined:
+                    this->Quarantined+=1;
+                    break;
+                case State::Deceased:
+                    this->Deceased+=1;
+                    break;
+            }
+        }
+    }
+
     friend std::ostream& operator<<(std::ostream& stream, SimulationState state){
         stream << state.Susceptible << ','
                 << state.Infected << ','
@@ -43,6 +71,7 @@ struct SimulationState{
         return stream;
     }
 };
+
 
 inline uint16_t rand_int(uint16_t max_range=0xffff){
     return rand() % max_range;
@@ -57,15 +86,15 @@ inline bool is_true(float probability){
 
 
 void populate_with_infected_agents(std::unique_ptr<Agent[]> & agents, uint16_t n_agents, uint16_t how_many_infected){
-    std::vector<bool> changed;
-    changed.resize(n_agents);
-    std::fill(changed.begin(), changed.end(), false);
-
-    for (int i = 0; i < how_many_infected; ++i) {
-        uint16_t next_pos = rand_int(n_agents);
-        if (changed[next_pos]) continue;
-        changed[next_pos] = true;
-        agents[next_pos].state = Infected;
+    uint16_t base = 0;
+    uint16_t pos;
+    uint16_t step = n_agents/how_many_infected;
+    uint16_t chunk = 0;
+    while (chunk < how_many_infected){
+        pos = base + rand_int(step);
+        agents[pos].state = State::Infected;
+        base += step;
+        ++chunk;
     }
 }
 
@@ -89,9 +118,8 @@ int main() {
     // populating with infected agents
     std::cout << "populating with infected agents...\n";
     auto sim_state = SimulationState();
-    sim_state.Infected = n_infected_agents;
-    sim_state.Susceptible -= n_infected_agents;
     populate_with_infected_agents(agents, n_agents, n_infected_agents);
+    sim_state.count_states(agents, n_agents);
 
     // init adjacency matrix
     SortedSparseMatrix who_knows_who{n_agents, 10 * n_agents};
@@ -122,33 +150,31 @@ int main() {
             if (agent_now.state == State::Infected){
                 // get neighbours
                 auto neighbouring_indexes = who_meets_who.get_all_relations(i);
+                // for each neighbour check if he will get infected
                 for (auto n: neighbouring_indexes) {
-                    if (agent_next_step[n].state == State::Infected) continue;
-                    // check if someone will get sick with probability beta
+                   // check if someone will get sick with probability beta
                     if (agents[n].state == State::Susceptible && is_true(params.beta)) {
                         agent_next_step[n].state = State::Infected;
-                        sim_state.Susceptible -= 1;
-                        sim_state.Infected += 1;
                     }
                 }
 
                 // check if agent recovers with probability mu
                 if (is_true(params.mu)) {
                     agent_next_step[i].state = State::Recovered;
-                    sim_state.Infected -= 1;
-                    sim_state.Recovered += 1;
                 }
             }
 
             // TODO: update opinions of each agent in next step:
             // here
         }
+        // swap buffers for next step
+        agent_next_step.swap(agents);
+
+        // get number of agents in each state
+        sim_state.count_states(agents, n_agents);
 
         // log step state to file
         out_file << sim_step_number << ',' << sim_state;
-
-        // swap buffers for next step
-        agent_next_step.swap(agents);
 
         // go to next sim step
         sim_step_number++;
