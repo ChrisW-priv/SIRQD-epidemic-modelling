@@ -160,6 +160,7 @@ int main() {
 
                 // check if agent recovers with probability mu
                 if (is_true(params.mu)) {
+                    agents[i].state = State::Recovered;
                     agent_next_step[i].state = State::Recovered;
                 }
             }
