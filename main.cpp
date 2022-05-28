@@ -23,6 +23,14 @@ struct SimulationParameters{
     float mu = 1.0; // probability to recover
     float gamma = 1.0; // probability to enter quarantine
     float kappa = 1.0; // risk of death
+
+    friend std::ostream& operator<<(std::ostream& stream, SimulationParameters& state){
+        stream << "beta:" << state.beta << ", "
+               << "mu:" << state.mu << ", "
+               << "gamma:" << state.gamma << ", "
+               << "kappa:" << state.kappa <<'\n';
+        return stream;
+    }
 };
 
 
@@ -106,6 +114,10 @@ void run_simulation(const std::string& out_file_name,
                     SortedSparseMatrix<uint16_t, uint32_t> & who_knows_who,
                     SortedSparseMatrix<uint16_t, uint32_t> & who_meets_who,
                     uint8_t n_steps) {
+    std::cout << "simulation started with parameters:\n" << params
+    << "output file with data from sim: " << out_file_name
+    << "number of agents in the simulation: " << n_agents << " of them " << n_infected_agents << " are infected"
+    << "\n";
     // init agent array
     std::unique_ptr<Agent[]> agents{new Agent[n_agents]{}};
 
