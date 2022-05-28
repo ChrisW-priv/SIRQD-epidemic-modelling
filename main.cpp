@@ -99,50 +99,33 @@ void populate_with_infected_agents(std::unique_ptr<Agent[]> & agents, uint16_t n
 }
 
 
-int main() {
-    // init parameters of the simulation
-    constexpr SimulationParameters params{};
-    constexpr uint16_t n_agents = 10'000;
-    constexpr uint8_t n_steps = 50;
-    constexpr uint16_t n_infected_agents = 500;
-
+void run_simulation(uint16_t n_agents,
+                    uint16_t n_infected_agents,
+                    SimulationParameters & params,
+                    SortedSparseMatrix<uint16_t, uint32_t> & who_knows_who,
+                    SortedSparseMatrix<uint16_t, uint32_t> & who_meets_who,
+                    uint8_t n_steps) {
     // init agent array
-    std::unique_ptr<Agent[]> agents{new Agent[n_agents]};
-    for (int i = 0; i < n_agents; ++i) {
-        agents[i] = Agent{};
-    }
+    std::unique_ptr<Agent[]> agents{new Agent[n_agents]{}};
 
     // init next_state buffer
-    std::unique_ptr<Agent[]> agent_next_step{new Agent[n_agents]};
+    std::unique_ptr<Agent[]> agent_next_step{new Agent[n_agents]{}};
 
-    // populating with infected agents
-    std::cout << "populating with infected agents...\n";
+    // populate with infected agents
     auto sim_state = SimulationState();
     populate_with_infected_agents(agents, n_agents, n_infected_agents);
     sim_state.count_states(agents, n_agents);
 
-    // init adjacency matrix
-    SortedSparseMatrix who_knows_who{n_agents, 10 * n_agents};
-    SortedSparseMatrix who_meets_who{n_agents, 10 * n_agents};
-
-    // init relations
-    std::cout << "importing relations from files...\n";
-    who_knows_who.import_relations_from_file("../who_knows_who.txt");
-    who_meets_who.import_relations_from_file("../who_meets_who.txt");
-
     // init log file
-    std::cout << "opening log file...\n";
     std::ofstream out_file{"sim_state_file.txt"};
 
     out_file << "SimStep,Susceptible,Infected,Recovered,Quarantined,Deceased\n";
     out_file << 0 << ',' << sim_state;
 
     // start simulation
-    std::cout << "starting simulation...\n";
     uint16_t sim_step_number=1;
     while (sim_step_number <= n_steps) {
         // simulation step:
-        std::cout << "started processing step " << sim_step_number << '\n';
         for (uint16_t i = 0; i < n_agents; i++) {
             auto agent_now = agents[i];
 
@@ -152,7 +135,7 @@ int main() {
                 auto neighbouring_indexes = who_meets_who.get_all_relations(i);
                 // for each neighbour check if he will get infected
                 for (auto n: neighbouring_indexes) {
-                   // check if someone will get sick with probability beta
+                    // check if someone will get sick with probability beta
                     if (agents[n].state == State::Susceptible && is_true(params.beta)) {
                         agent_next_step[n].state = State::Infected;
                     }
@@ -179,9 +162,34 @@ int main() {
 
         // go to next sim step
         sim_step_number++;
-    };
+    }
+}
 
-    std::cout << "simulation finished!\n";
+
+int main() {
+    // init parameters of the simulation
+    SimulationParameters params{};
+    constexpr uint16_t n_agents = 10'000;
+    constexpr uint8_t n_steps = 50;
+    constexpr uint16_t n_infected_agents = 500;
+
+    // init agent array
+    std::unique_ptr<Agent[]> agents{new Agent[n_agents]{}};
+
+    // init next_state buffer
+    std::unique_ptr<Agent[]> agent_next_step{new Agent[n_agents]{}};
+
+    // init adjacency matrix
+    SortedSparseMatrix who_knows_who{n_agents, 10 * n_agents};
+    SortedSparseMatrix who_meets_who{n_agents, 10 * n_agents};
+
+    // init relations
+    std::cout << "importing relations from files...\n";
+    who_knows_who.import_relations_from_file("../who_knows_who.txt");
+    who_meets_who.import_relations_from_file("../who_meets_who.txt");
+
+    // do calculations
+    run_simulation(n_agents, n_infected_agents, params, who_knows_who, who_meets_who, n_steps);
 
     return 0;
 }
