@@ -1,5 +1,5 @@
 #include <iostream>
-#include <memory>
+#include <thread>
 #include "SortedSparseMatrix.h"
 
 enum State{
@@ -18,19 +18,30 @@ struct Agent{
 };
 
 
-struct SimulationParameters{
+struct SimulationProbabilities{
     float beta = 1.0; // probability of infection
     float mu = 1.0; // probability to recover
     float gamma = 1.0; // probability to enter quarantine
     float kappa = 1.0; // risk of death
 
-    friend std::ostream& operator<<(std::ostream& stream, SimulationParameters& state){
+    friend std::ostream& operator<<(std::ostream& stream, SimulationProbabilities& state){
         stream << "beta:" << state.beta << ", "
                << "mu:" << state.mu << ", "
                << "gamma:" << state.gamma << ", "
                << "kappa:" << state.kappa <<'\n';
         return stream;
     }
+};
+
+
+struct SimulationParameters{
+    const char * out_file_name;
+    SimulationProbabilities probabilities;
+    uint16_t n_agents;
+    uint16_t n_infected_agents;
+    SortedSparseMatrix<uint16_t, uint32_t> & who_knows_who;
+    SortedSparseMatrix<uint16_t, uint32_t> & who_meets_who;
+    uint8_t n_steps;
 };
 
 
@@ -107,17 +118,15 @@ void populate_with_infected_agents(std::unique_ptr<Agent[]> & agents, uint16_t n
 }
 
 
-void run_simulation(const std::string& out_file_name,
-                    uint16_t n_agents,
-                    uint16_t n_infected_agents,
-                    SimulationParameters & params,
-                    SortedSparseMatrix<uint16_t, uint32_t> & who_knows_who,
-                    SortedSparseMatrix<uint16_t, uint32_t> & who_meets_who,
-                    uint8_t n_steps) {
-    std::cout << "simulation started with parameters:\n" << params
-    << "output file with data from sim: " << out_file_name
-    << "number of agents in the simulation: " << n_agents << " of them " << n_infected_agents << " are infected"
-    << "\n";
+void run_simulation(SimulationParameters* params) {
+    const std::string& out_file_name = params->out_file_name;
+    uint16_t n_agents = params->n_agents;
+    uint16_t n_infected_agents = params->n_infected_agents;
+    SimulationProbabilities & probabilities = params->probabilities;
+    SortedSparseMatrix<uint16_t, uint32_t> & who_knows_who = params->who_knows_who;
+    SortedSparseMatrix<uint16_t, uint32_t> & who_meets_who = params->who_meets_who;
+    uint8_t n_steps = params->n_steps;
+
     // init agent array
     std::unique_ptr<Agent[]> agents{new Agent[n_agents]{}};
 
@@ -149,13 +158,13 @@ void run_simulation(const std::string& out_file_name,
                 // for each neighbour check if he will get infected
                 for (auto n: neighbouring_indexes) {
                     // check if someone will get sick with probability beta
-                    if (agents[n].state == State::Susceptible && is_true(params.beta)) {
+                    if (agents[n].state == State::Susceptible && is_true(probabilities.beta)) {
                         agent_next_step[n].state = State::Infected;
                     }
                 }
 
                 // check if agent recovers with probability mu
-                if (is_true(params.mu)) {
+                if (is_true(probabilities.mu)) {
                     agents[i].state = State::Recovered;
                     agent_next_step[i].state = State::Recovered;
                 }
@@ -179,9 +188,24 @@ void run_simulation(const std::string& out_file_name,
 }
 
 
+SimulationParameters* create_params(const char * out_file_name,
+                                    SimulationProbabilities probabilities,
+                                    uint16_t n_agents,
+                                    uint16_t n_infected_agents,
+                                    SortedSparseMatrix<uint16_t, uint32_t> & who_knows_who,
+                                    SortedSparseMatrix<uint16_t, uint32_t> & who_meets_who,
+                                    uint8_t n_steps)
+{
+    return new SimulationParameters
+            {
+                    out_file_name,
+                    probabilities,
+                    n_agents, n_infected_agents, who_knows_who, who_meets_who, n_steps
+            };
+}
+
 int main() {
     // init parameters of the simulation
-    SimulationParameters params{};
     constexpr uint16_t n_agents = 10'000;
     constexpr uint8_t n_steps = 50;
     constexpr uint16_t n_infected_agents = 500;
@@ -195,8 +219,29 @@ int main() {
     who_knows_who.import_relations_from_file("../who_knows_who.txt");
     who_meets_who.import_relations_from_file("../who_meets_who.txt");
 
-    // do calculations
-    run_simulation("sim_state_file.txt", n_agents, n_infected_agents, params, who_knows_who, who_meets_who, n_steps);
+    // create params for the simulation
+
+    SimulationProbabilities prob1{};
+    SimulationProbabilities prob2{.5, .5};
+    SimulationProbabilities prob3{.25, .25};
+    SimulationProbabilities prob4{.1, 0.0};
+
+    std::vector<SimulationParameters*> parameters = {
+            create_params("sim1.txt", prob1, n_agents, n_infected_agents, who_knows_who, who_meets_who, n_steps),
+            create_params("sim2.txt", prob2, n_agents, n_infected_agents, who_knows_who, who_meets_who, n_steps),
+            create_params("sim3.txt", prob3, n_agents, n_infected_agents, who_knows_who, who_meets_who, n_steps),
+            create_params("sim4.txt", prob4, n_agents, n_infected_agents, who_knows_who, who_meets_who, n_steps),
+    };
+
+    std::vector<std::thread> threads;
+
+    for (auto & parameter : parameters) {
+        threads.emplace_back(run_simulation, parameter);
+    }
+
+    for (auto &th : threads) {
+        th.join();
+    }
 
     return 0;
 }
