@@ -25,6 +25,7 @@ int main() {
     SimulationProbabilities prob3{.25, .25};
     SimulationProbabilities prob4{.1, 0.0};
 
+    // init and populate parameters vector
     std::vector<SimulationParameters*> parameters = {
             create_params("sim1.txt", prob1, n_agents, n_infected_agents, who_knows_who, who_meets_who, n_steps),
             create_params("sim2.txt", prob2, n_agents, n_infected_agents, who_knows_who, who_meets_who, n_steps),
