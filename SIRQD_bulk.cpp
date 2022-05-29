@@ -155,6 +155,16 @@ void run_simulation(SimulationParameters* params) {
                     agents[i].state = State::Recovered;
                     agent_next_step[i].state = State::Recovered;
                 }
+                // check if agent enters quarantine with probability gamma
+                if (is_true(probabilities.gamma)) {
+                    agents[i].state = State::Quarantined;
+                    agent_next_step[i].state = State::Quarantined;
+                }
+                // check if agent dies with probability kappa
+                if (is_true(probabilities.kappa)){
+                    agents[i].state = State::Deceased;
+                    agent_next_step[i].state = State::Deceased;
+                }
             }
 
             // TODO: update opinions of each agent in next step:
