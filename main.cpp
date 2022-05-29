@@ -46,7 +46,7 @@ struct SimulationParameters{
 
 
 struct SimulationState{
-    uint16_t Susceptible = 10'000;
+    uint16_t Susceptible = 0;
     uint16_t Infected = 0;
     uint16_t Recovered = 0;
     uint16_t Quarantined = 0;
@@ -54,31 +54,16 @@ struct SimulationState{
 
     /// modifies the state of Simulation state to match how many agents there are of given state
     void count_states(std::unique_ptr<Agent[]> & agents, uint16_t n_agents){
-        this->Susceptible=0;
-        this->Infected=0;
-        this->Recovered=0;
-        this->Quarantined=0;
-        this->Deceased=0;
+        uint16_t help_arr[5]{};
 
-        for (uint16_t i=0;i<n_agents;++i){
-            switch (agents[i].state) {
-                case State::Susceptible:
-                    this->Susceptible+=1;
-                    break;
-                case State::Infected:
-                    this->Infected+=1;
-                    break;
-                case State::Recovered:
-                    this->Recovered+=1;
-                    break;
-                case State::Quarantined:
-                    this->Quarantined+=1;
-                    break;
-                case State::Deceased:
-                    this->Deceased+=1;
-                    break;
-            }
-        }
+        for (uint16_t i=0;i<n_agents;++i)
+            help_arr[agents[i].state] += 1;
+
+        Susceptible = help_arr[0];
+        Infected = help_arr[1];
+        Recovered = help_arr[2];
+        Quarantined = help_arr[3];
+        Deceased = help_arr[4];
     }
 
     friend std::ostream& operator<<(std::ostream& stream, SimulationState state){
