@@ -1,6 +1,6 @@
 #include <iostream>
 #include "SortedSparseMatrix.h"
-#include "SIRQD_bulk.cpp"
+#include "SIRQD_bulk.h"
 
 
 int main() {

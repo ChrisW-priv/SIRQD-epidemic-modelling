@@ -1,7 +1,6 @@
 #include <iostream>
-#include <memory>
 #include <thread>
-#include "SortedSparseMatrix.h"
+#include "SIRQD_bulk.h"
 
 
 enum State{
@@ -17,22 +16,6 @@ struct Agent{
     State state = State::Susceptible;
     float independence = 0.0;
     float opinion = 1.0;
-};
-
-
-struct SimulationProbabilities{
-    float beta = 1.0; // probability of infection
-    float mu = 1.0; // probability to recover
-    float gamma = 1.0; // probability to enter quarantine
-    float kappa = 1.0; // risk of death
-
-    friend std::ostream& operator<<(std::ostream& stream, SimulationProbabilities& state){
-        stream << "beta:" << state.beta << ", "
-               << "mu:" << state.mu << ", "
-               << "gamma:" << state.gamma << ", "
-               << "kappa:" << state.kappa <<'\n';
-        return stream;
-    }
 };
 
 
