@@ -1,5 +1,6 @@
 #include <iostream>
 #include <memory>
+#include <thread>
 #include "SortedSparseMatrix.h"
 
 
@@ -104,6 +105,23 @@ void populate_with_infected_agents(std::unique_ptr<Agent[]> & agents, uint16_t n
 }
 
 
+SimulationParameters* create_params(const char * out_file_name,
+                                    SimulationProbabilities probabilities,
+                                    uint16_t n_agents,
+                                    uint16_t n_infected_agents,
+                                    SortedSparseMatrix<uint16_t, uint32_t> & who_knows_who,
+                                    SortedSparseMatrix<uint16_t, uint32_t> & who_meets_who,
+                                    uint8_t n_steps)
+{
+    return new SimulationParameters
+            {
+                    out_file_name,
+                    probabilities,
+                    n_agents, n_infected_agents, who_knows_who, who_meets_who, n_steps
+            };
+}
+
+
 void run_simulation(SimulationParameters* params) {
     const std::string& out_file_name = params->out_file_name;
     uint16_t n_agents = params->n_agents;
@@ -174,18 +192,17 @@ void run_simulation(SimulationParameters* params) {
 }
 
 
-SimulationParameters* create_params(const char * out_file_name,
-                                    SimulationProbabilities probabilities,
-                                    uint16_t n_agents,
-                                    uint16_t n_infected_agents,
-                                    SortedSparseMatrix<uint16_t, uint32_t> & who_knows_who,
-                                    SortedSparseMatrix<uint16_t, uint32_t> & who_meets_who,
-                                    uint8_t n_steps)
-{
-    return new SimulationParameters
-            {
-                    out_file_name,
-                    probabilities,
-                    n_agents, n_infected_agents, who_knows_who, who_meets_who, n_steps
-            };
+void run_simulations(std::vector<SimulationParameters*>& parameters){
+    // init vector of worker threads
+    std::vector<std::thread> threads;
+
+    // start treads with parameters specified
+    for (auto & parameter : parameters) {
+        threads.emplace_back(run_simulation, parameter);
+    }
+
+    // wait for the end of execution of all worker threads
+    for (auto &th : threads) {
+        th.join();
+    }
 }

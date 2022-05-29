@@ -1,5 +1,4 @@
 #include <iostream>
-#include <thread>
 #include "SortedSparseMatrix.h"
 #include "SIRQD_bulk.cpp"
 
@@ -33,18 +32,8 @@ int main() {
             create_params("sim4.txt", prob4, n_agents, n_infected_agents, who_knows_who, who_meets_who, n_steps),
     };
 
-    // init vector of worker threads
-    std::vector<std::thread> threads;
-
-    // start treads with parameters specified
-    for (auto & parameter : parameters) {
-        threads.emplace_back(run_simulation, parameter);
-    }
-
-    // wait for the end of execution of all worker threads
-    for (auto &th : threads) {
-        th.join();
-    }
+    // run simulation
+    run_simulations(parameters);
 
     return 0;
 }
