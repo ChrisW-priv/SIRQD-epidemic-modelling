@@ -1,14 +1,15 @@
 from random import random
 
 
-choices = list(range(10_000))
+choices = 10_000
+avg_friends = 10
 
 
 def make_relations(text_file):
     relations = []
-    for i in range(10_000):
-        for j in range(i+1, 10_000):
-            in_relation = random() < (1/(10_000/10))
+    for i in range(choices):
+        for j in range(i+1, choices):
+            in_relation = random() < (1/(choices/avg_friends))
             if in_relation:
                 relations.append((i, j))
                 relations.append((j, i))
