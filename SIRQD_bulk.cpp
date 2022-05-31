@@ -150,8 +150,8 @@ void run_simulation(SimulationParameters* params) {
                     }
                 }
 
-                // check if agent recovers with probability mu
-                if (is_true(probabilities.mu)) {
+                // check if agent recovers with probability mu (probability varies depending on opinion of an agent)
+                if (is_true(agent_now.opinion < 0.5 ? probabilities.mu : probabilities.mu/2)) {
                     agents[i].state = State::Recovered;
                     agent_next_step[i].state = State::Recovered;
                 }
