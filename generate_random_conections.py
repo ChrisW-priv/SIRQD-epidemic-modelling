@@ -1,18 +1,21 @@
-from random import random
+import networkx as nx
+
+n_nodes = 10_000
 
 
-choices = 10_000
-avg_friends = 10
+def make_relations(text_file, m):
+    graph = nx.barabasi_albert_graph(n_nodes, m)
 
-
-def make_relations(text_file):
+    edges = [edge for edge in graph.edges]
     relations = []
-    for i in range(choices):
-        for j in range(i+1, choices):
-            in_relation = random() < (1/(choices/avg_friends))
-            if in_relation:
-                relations.append((i, j))
-                relations.append((j, i))
+
+    # add all relations given by .edges property
+    relations += edges
+
+    # also add reversed edges - if a knows b, b knows a
+    for edge in edges:
+        a, b = edge
+        relations.append((b, a))
 
     sorted_relations = sorted(relations)
 
@@ -21,5 +24,8 @@ def make_relations(text_file):
             new.write(f"{a} {b}\n")
 
 
-make_relations("who_knows_who.txt")
-make_relations("who_meets_who.txt")
+m_epidemic = 10
+m_opinion = 10
+
+make_relations("who_knows_who.txt", m_opinion)
+make_relations("who_meets_who.txt", m_epidemic)
