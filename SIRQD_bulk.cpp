@@ -158,12 +158,14 @@ void run_simulation(SimulationParameters* params) {
             if (agent_now.state == State::Infected){
                 // get neighbours
                 auto neighbouring_indexes = who_meets_who.get_all_relations(i);
+                auto infection_spread_risk = agent_now.opinion == 1 ? probabilities.beta : probabilities.beta/2;
                 // for each neighbour check if he will get infected
                 for (auto n: neighbouring_indexes) {
                     // check if someone will get sick with probability beta
-                    if (agents[n].state == State::Susceptible && is_true(probabilities.beta)) { // S -> I
+
+                    // S -> I
+                    if (agents[n].state == State::Susceptible && is_true(infection_spread_risk))
                         agent_next_step[n].state = State::Infected;
-                    }
                 }
 
                 // check if agent recovers with probability mu
