@@ -27,5 +27,5 @@ def make_relations(text_file, m):
 m_epidemic = 10
 m_opinion = 10
 
-make_relations("who_knows_who.txt", m_opinion)
-make_relations("who_meets_who.txt", m_epidemic)
+make_relations("../data/who_knows_who.txt", m_opinion)
+make_relations("../data/who_meets_who.txt", m_epidemic)
