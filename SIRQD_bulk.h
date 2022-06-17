@@ -21,13 +21,10 @@ struct SimulationProbabilities{
     }
 };
 
-SimulationParameters* create_params(const char * out_file_name,
-                                    SimulationProbabilities probabilities,
-                                    uint16_t n_agents,
-                                    uint16_t n_infected_agents,
-                                    SortedSparseMatrix<uint16_t, uint32_t> & who_knows_who,
-                                    SortedSparseMatrix<uint16_t, uint32_t> & who_meets_who,
-                                    uint8_t n_steps);
+SimulationParameters *create_params(const char *out_file_name, SimulationProbabilities probabilities, uint8_t q_size_of_lobby, uint16_t n_agents,
+                                    uint16_t n_infected_agents, SortedSparseMatrix<uint16_t, uint32_t> &who_knows_who,
+                                    SortedSparseMatrix<uint16_t, uint32_t> &who_meets_who, uint8_t n_steps
+                                    );
 
 void run_simulations(std::vector<SimulationParameters*>& parameters);
 

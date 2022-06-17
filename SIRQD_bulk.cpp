@@ -15,13 +15,14 @@ enum State{
 struct Agent{
     State state = State::Susceptible;
     float independence = 0.0;
-    float opinion = 1.0;
+    uint8_t opinion = 1; // 0 or 1
 };
 
 
 struct SimulationParameters{
     const char * out_file_name;
     SimulationProbabilities probabilities;
+    uint8_t q_size_of_lobby;
     uint16_t n_agents;
     uint16_t n_infected_agents;
     SortedSparseMatrix<uint16_t, uint32_t> & who_knows_who;
@@ -31,18 +32,25 @@ struct SimulationParameters{
 
 
 struct SimulationState{
+    // epidemic layer data
     uint16_t Susceptible = 0;
     uint16_t Infected = 0;
     uint16_t Recovered = 0;
     uint16_t Quarantined = 0;
     uint16_t Deceased = 0;
 
+    // opinion layer data
+    uint16_t NumberOfPositiveOpinions = 0;
+
     /// modifies the state of Simulation state to match how many agents there are of given state
     void count_states(std::unique_ptr<Agent[]> & agents, uint16_t n_agents){
         uint16_t help_arr[5]{};
+        NumberOfPositiveOpinions = 0;
 
-        for (uint16_t i=0;i<n_agents;++i)
+        for (uint16_t i=0;i<n_agents;++i){
             help_arr[agents[i].state] += 1;
+            NumberOfPositiveOpinions += agents[i].opinion;
+        }
 
         Susceptible = help_arr[0];
         Infected = help_arr[1];
@@ -56,7 +64,9 @@ struct SimulationState{
                << state.Infected << ','
                << state.Recovered << ','
                << state.Quarantined << ','
-               << state.Deceased <<'\n';
+               << state.Deceased << ','
+               << state.NumberOfPositiveOpinions << ','
+               << '\n';
         return stream;
     }
 };
@@ -90,6 +100,7 @@ void populate_with_infected_agents(std::unique_ptr<Agent[]> & agents, uint16_t n
 
 SimulationParameters* create_params(const char * out_file_name,
                                     SimulationProbabilities probabilities,
+                                    uint8_t q_size_of_lobby,
                                     uint16_t n_agents,
                                     uint16_t n_infected_agents,
                                     SortedSparseMatrix<uint16_t, uint32_t> & who_knows_who,
@@ -100,14 +111,17 @@ SimulationParameters* create_params(const char * out_file_name,
             {
                     out_file_name,
                     probabilities,
+                    q_size_of_lobby,
                     n_agents, n_infected_agents, who_knows_who, who_meets_who, n_steps
             };
 }
 
 
 void run_simulation(SimulationParameters* params) {
+    // init params for easier use later
     const std::string& out_file_name = params->out_file_name;
     uint16_t n_agents = params->n_agents;
+    uint8_t q_size_of_lobby = params->q_size_of_lobby;
     uint16_t n_infected_agents = params->n_infected_agents;
     SimulationProbabilities & probabilities = params->probabilities;
     SortedSparseMatrix<uint16_t, uint32_t> & who_knows_who = params->who_knows_who;
@@ -138,6 +152,8 @@ void run_simulation(SimulationParameters* params) {
         for (uint16_t i = 0; i < n_agents; i++) {
             auto agent_now = agents[i];
 
+            // EPIDEMIC LAYER
+
             // handle states of the agent
             if (agent_now.state == State::Infected){
                 // get neighbours
@@ -145,30 +161,50 @@ void run_simulation(SimulationParameters* params) {
                 // for each neighbour check if he will get infected
                 for (auto n: neighbouring_indexes) {
                     // check if someone will get sick with probability beta
-                    if (agents[n].state == State::Susceptible && is_true(probabilities.beta)) {
+                    if (agents[n].state == State::Susceptible && is_true(probabilities.beta)) { // S -> I
                         agent_next_step[n].state = State::Infected;
                     }
                 }
 
                 // check if agent recovers with probability mu
-                if (is_true(probabilities.mu)) {
+                if (is_true(probabilities.mu)) { // I -> R
                     agents[i].state = State::Recovered;
                     agent_next_step[i].state = State::Recovered;
                 }
                 // check if agent enters quarantine with probability gamma
-                else if (is_true(probabilities.gamma)) {
+                else if (is_true(probabilities.gamma)) { // I -> Q
                     agents[i].state = State::Quarantined;
                     agent_next_step[i].state = State::Quarantined;
                 }
                 // check if agent dies with probability kappa
-                else if (is_true(probabilities.kappa)){
+                else if (is_true(probabilities.kappa)){ // I -> D
                     agents[i].state = State::Deceased;
                     agent_next_step[i].state = State::Deceased;
                 }
             }
 
-            // TODO: update opinions of each agent in next step:
-            // here
+            // OPINION LAYER
+
+            if (is_true(agent_now.independence)) {
+                auto neighbouring_indexes = who_knows_who.get_all_relations(i);
+                uint16_t total_opinion = 0;
+                uint16_t participants = 0;
+                for (auto n: neighbouring_indexes){
+                    if (agents[n].state != State::Deceased){
+                        participants++;
+                        total_opinion += agents[n].opinion;
+                    }
+                }
+                if (participants < q_size_of_lobby) continue;
+
+                if (total_opinion == 0) agent_next_step[i].opinion = 0;
+                else if (total_opinion == q_size_of_lobby) agent_next_step[i].opinion = 1;
+
+            } else { // doesn't act in conformity to the lobby
+                if (is_true(0.5)) // flip opinion with fifty-fifty probability
+                    agent_next_step[i].opinion = 1 - agents[i].opinion;
+            }
+
         }
         // swap buffers for next step
         agent_next_step.swap(agents);
