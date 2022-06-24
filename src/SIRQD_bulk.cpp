@@ -65,7 +65,7 @@ struct SimulationState{
                << state.Recovered << ','
                << state.Quarantined << ','
                << state.Deceased << ','
-               << state.NumberOfPositiveOpinions << ','
+               << state.NumberOfPositiveOpinions
                << '\n';
         return stream;
     }
@@ -142,7 +142,7 @@ void run_simulation(SimulationParameters* params) {
     // init log file
     std::ofstream out_file{out_file_name};
 
-    out_file << "SimStep,Susceptible,Infected,Recovered,Quarantined,Deceased\n";
+    out_file << "SimStep,Susceptible,Infected,Recovered,Quarantined,Deceased,NumberOfPositiveOpinions\n";
     out_file << 0 << ',' << sim_state;
 
     // start simulation
@@ -187,17 +187,32 @@ void run_simulation(SimulationParameters* params) {
 
             // OPINION LAYER
 
-            if (is_true(agent_now.independence)) {
+            if (is_true(agent_now.independence)) { // acts in conformity to the lobby
                 auto neighbouring_indexes = who_knows_who.get_all_relations(i);
+
+                if (neighbouring_indexes.size() < q_size_of_lobby) continue;
+
                 uint16_t total_opinion = 0;
-                uint16_t participants = 0;
-                for (auto n: neighbouring_indexes){
-                    if (agents[n].state != State::Deceased){
-                        participants++;
-                        total_opinion += agents[n].opinion;
+                if (neighbouring_indexes.size() == q_size_of_lobby) { // if numer of alive agents is equal then no need to be fancy
+                    for (auto n: neighbouring_indexes){
+                        if (agents[n].state != State::Deceased) break;
+                        else total_opinion += agents[n].opinion;
+                    }
+                } else { // fancy sampling method used here
+                    std::vector<uint16_t> vector_of_indexes;
+                    vector_of_indexes.insert(vector_of_indexes.begin(), neighbouring_indexes.begin(), neighbouring_indexes.end());
+                    for (int lobby_member=0; lobby_member<q_size_of_lobby; ++lobby_member) {
+                        int j = rand_int(q_size_of_lobby - lobby_member);
+                        auto n = vector_of_indexes[j];
+                        if (agents[n].state == Deceased) continue;
+                        else {
+                            // update opinion
+                            total_opinion += agents[n].opinion;
+                            // switch places with used element (to avoid repetitions)
+                            vector_of_indexes[j] = vector_of_indexes[q_size_of_lobby - lobby_member - 1];
+                        }
                     }
                 }
-                if (participants < q_size_of_lobby) continue;
 
                 if (total_opinion == 0) agent_next_step[i].opinion = 0;
                 else if (total_opinion == q_size_of_lobby) agent_next_step[i].opinion = 1;
