@@ -8,6 +8,7 @@ int main() {
     constexpr uint16_t n_agents = 10'000;
     constexpr uint8_t n_steps = 25;
     constexpr uint16_t n_infected_agents = 500;
+    constexpr uint16_t n_negative_agents = 500;
     constexpr uint8_t q_size_of_lobby = 10;
 
     // init adjacency matrix
@@ -16,8 +17,8 @@ int main() {
 
     // import relations between agents from file
     std::cout << "importing relations from files...\n";
-    who_knows_who.import_sorted_relations_from_file("../who_knows_who.txt");
-    who_meets_who.import_sorted_relations_from_file("../who_meets_who.txt");
+    who_knows_who.import_sorted_relations_from_file("../../who_knows_who.txt");
+    who_meets_who.import_sorted_relations_from_file("../../who_meets_who.txt");
     std::cout << "done importing relations\n";
 
     // create params for the simulation
@@ -29,10 +30,14 @@ int main() {
 
     // init and populate parameters vector
     std::vector<SimulationParameters*> parameters = {
-            create_params("sim1.txt", prob1, q_size_of_lobby, n_agents, n_infected_agents, who_knows_who, who_meets_who, n_steps),
-            create_params("sim2.txt", prob2, q_size_of_lobby, n_agents, n_infected_agents, who_knows_who, who_meets_who, n_steps),
-            create_params("sim3.txt", prob3, q_size_of_lobby, n_agents, n_infected_agents, who_knows_who, who_meets_who, n_steps),
-            create_params("sim4.txt", prob4, q_size_of_lobby, n_agents, n_infected_agents, who_knows_who, who_meets_who, n_steps),
+            create_params("sim1.txt", prob1, q_size_of_lobby, n_agents, n_infected_agents, 0, n_negative_agents,
+                          who_knows_who, who_meets_who),
+            create_params("sim2.txt", prob2, q_size_of_lobby, n_agents, n_infected_agents, 0, n_negative_agents,
+                          who_knows_who, who_meets_who),
+            create_params("sim3.txt", prob3, q_size_of_lobby, n_agents, n_infected_agents, 0, n_negative_agents,
+                          who_knows_who, who_meets_who),
+            create_params("sim4.txt", prob4, q_size_of_lobby, n_agents, n_infected_agents, 0, n_negative_agents,
+                          who_knows_who, who_meets_who),
     };
 
     // run simulation

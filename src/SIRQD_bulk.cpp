@@ -25,6 +25,7 @@ struct SimulationParameters{
     uint8_t q_size_of_lobby;
     uint16_t n_agents;
     uint16_t n_infected_agents;
+    uint16_t n_negative_agents;
     SortedSparseMatrix<uint16_t, uint32_t> & who_knows_who;
     SortedSparseMatrix<uint16_t, uint32_t> & who_meets_who;
     uint8_t n_steps;
@@ -98,21 +99,33 @@ void populate_with_infected_agents(std::unique_ptr<Agent[]> & agents, uint16_t n
 }
 
 
-SimulationParameters* create_params(const char * out_file_name,
-                                    SimulationProbabilities probabilities,
-                                    uint8_t q_size_of_lobby,
-                                    uint16_t n_agents,
-                                    uint16_t n_infected_agents,
-                                    SortedSparseMatrix<uint16_t, uint32_t> & who_knows_who,
-                                    SortedSparseMatrix<uint16_t, uint32_t> & who_meets_who,
-                                    uint8_t n_steps)
+void populate_with_negative_agents(std::unique_ptr<Agent[]> & agents, uint16_t n_agents, uint16_t how_many_negative){
+    uint16_t base = 0;
+    uint16_t pos;
+    uint16_t step = n_agents/how_many_negative;
+    uint16_t chunk = 0;
+    while (chunk < how_many_negative){
+        pos = base + rand_int(step);
+        agents[pos].opinion = 0;
+        base += step;
+        ++chunk;
+    }
+}
+
+
+SimulationParameters *
+create_params(const char *out_file_name, SimulationProbabilities probabilities, uint8_t q_size_of_lobby,
+              uint16_t n_agents, uint16_t n_infected_agents, uint16_t n_negative_agents,
+              SortedSparseMatrix<uint16_t, uint32_t> &who_knows_who,
+              SortedSparseMatrix<uint16_t, uint32_t> &who_meets_who, uint8_t n_steps)
 {
     return new SimulationParameters
             {
                     out_file_name,
                     probabilities,
                     q_size_of_lobby,
-                    n_agents, n_infected_agents, who_knows_who, who_meets_who, n_steps
+                    n_agents, n_infected_agents, n_negative_agents,
+                    who_knows_who, who_meets_who, n_steps
             };
 }
 
@@ -123,6 +136,7 @@ void run_simulation(SimulationParameters* params) {
     uint16_t n_agents = params->n_agents;
     uint8_t q_size_of_lobby = params->q_size_of_lobby;
     uint16_t n_infected_agents = params->n_infected_agents;
+    uint16_t n_negative_agents = params->n_negative_agents;
     SimulationProbabilities & probabilities = params->probabilities;
     SortedSparseMatrix<uint16_t, uint32_t> & who_knows_who = params->who_knows_who;
     SortedSparseMatrix<uint16_t, uint32_t> & who_meets_who = params->who_meets_who;
@@ -137,12 +151,18 @@ void run_simulation(SimulationParameters* params) {
     // populate with infected agents
     auto sim_state = SimulationState();
     populate_with_infected_agents(agents, n_agents, n_infected_agents);
-    sim_state.count_states(agents, n_agents);
+    populate_with_negative_agents(agents, n_agents, n_infected_agents);
+
+    // at the beginning buffers need to match to avoid cyclic state swap
+    for (int i = 0; i < n_agents; ++i) {
+        agent_next_step[i] = agents[i];
+    }
 
     // init log file
     std::ofstream out_file{out_file_name};
 
     out_file << "SimStep,Susceptible,Infected,Recovered,Quarantined,Deceased,NumberOfPositiveOpinions\n";
+    sim_state.count_states(agents, n_agents);
     out_file << 0 << ',' << sim_state;
 
     // start simulation
