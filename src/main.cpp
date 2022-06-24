@@ -30,14 +30,10 @@ int main() {
 
     // init and populate parameters vector
     std::vector<SimulationParameters*> parameters = {
-            create_params("sim1.txt", prob1, q_size_of_lobby, n_agents, n_infected_agents, 0, n_negative_agents,
-                          who_knows_who, who_meets_who),
-            create_params("sim2.txt", prob2, q_size_of_lobby, n_agents, n_infected_agents, 0, n_negative_agents,
-                          who_knows_who, who_meets_who),
-            create_params("sim3.txt", prob3, q_size_of_lobby, n_agents, n_infected_agents, 0, n_negative_agents,
-                          who_knows_who, who_meets_who),
-            create_params("sim4.txt", prob4, q_size_of_lobby, n_agents, n_infected_agents, 0, n_negative_agents,
-                          who_knows_who, who_meets_who),
+            create_params("sim1.txt", prob1, q_size_of_lobby, n_agents, n_infected_agents, n_negative_agents, who_knows_who, who_meets_who, 0),
+            create_params("sim2.txt", prob2, q_size_of_lobby, n_agents, n_infected_agents, n_negative_agents, who_knows_who, who_meets_who, 0),
+            create_params("sim3.txt", prob3, q_size_of_lobby, n_agents, n_infected_agents, n_negative_agents, who_knows_who, who_meets_who, 0),
+            create_params("sim4.txt", prob4, q_size_of_lobby, n_agents, n_infected_agents, n_negative_agents, who_knows_who, who_meets_who, 0),
     };
 
     // run simulation
