@@ -172,6 +172,9 @@ void run_simulation(SimulationParameters* params) {
         for (uint16_t i = 0; i < n_agents; i++) {
             auto agent_now = agents[i];
 
+            // if current agent is dead - continue to the next agent, no need to handle him
+            if (agent_now.state == State::Deceased) continue;
+
             // EPIDEMIC LAYER
 
             // handle states of the agent
@@ -223,14 +226,11 @@ void run_simulation(SimulationParameters* params) {
                     vector_of_indexes.insert(vector_of_indexes.begin(), neighbouring_indexes.begin(), neighbouring_indexes.end());
                     for (int lobby_member=0; lobby_member<q_size_of_lobby; ++lobby_member) {
                         int j = rand_int(q_size_of_lobby - lobby_member);
+                        // update opinion
                         auto n = vector_of_indexes[j];
-                        if (agents[n].state == Deceased) continue;
-                        else {
-                            // update opinion
-                            total_opinion += agents[n].opinion;
-                            // switch places with used element (to avoid repetitions)
-                            vector_of_indexes[j] = vector_of_indexes[q_size_of_lobby - lobby_member - 1];
-                        }
+                        total_opinion += agents[n].opinion;
+                        // switch places with used element (to avoid repetitions)
+                        vector_of_indexes[j] = vector_of_indexes[q_size_of_lobby - lobby_member - 1];
                     }
                 }
 

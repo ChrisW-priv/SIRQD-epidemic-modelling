@@ -17,8 +17,8 @@ int main() {
 
     // import relations between agents from file
     std::cout << "importing relations from files...\n";
-    who_knows_who.import_sorted_relations_from_file("../../who_knows_who.txt");
-    who_meets_who.import_sorted_relations_from_file("../../who_meets_who.txt");
+    who_knows_who.import_sorted_relations_from_file("../data/who_knows_who.txt");
+    who_meets_who.import_sorted_relations_from_file("../data/who_meets_who.txt");
     std::cout << "done importing relations\n";
 
     // create params for the simulation
