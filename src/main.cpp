@@ -12,17 +12,16 @@ int main() {
     constexpr uint8_t q_size_of_lobby = 10;
 
     // init adjacency matrix
-    SortedSparseMatrix who_knows_who{n_agents, 10 * n_agents};
-    SortedSparseMatrix who_meets_who{n_agents, 10 * n_agents};
+    SortedSparseMatrix who_knows_who{n_agents, 20 * n_agents};
+    SortedSparseMatrix who_meets_who{n_agents, 20 * n_agents};
 
     // import relations between agents from file
     std::cout << "importing relations from files...\n";
-    who_knows_who.import_sorted_relations_from_file("../data/who_knows_who.txt");
-    who_meets_who.import_sorted_relations_from_file("../data/who_meets_who.txt");
+    who_knows_who.import_sorted_relations_from_file("../data/who_knows_who1.txt");
+    who_meets_who.import_sorted_relations_from_file("../data/who_meets_who1.txt");
     std::cout << "done importing relations\n";
 
     // create params for the simulation
-
     SimulationProbabilities prob1{};
     SimulationProbabilities prob2{.5, .5};
     SimulationProbabilities prob3{.25, .25};
@@ -30,10 +29,10 @@ int main() {
 
     // init and populate parameters vector
     std::vector<SimulationParameters*> parameters = {
-            create_params("sim1.txt", prob1, q_size_of_lobby, n_agents, n_infected_agents, n_negative_agents, who_knows_who, who_meets_who, 0),
-            create_params("sim2.txt", prob2, q_size_of_lobby, n_agents, n_infected_agents, n_negative_agents, who_knows_who, who_meets_who, 0),
-            create_params("sim3.txt", prob3, q_size_of_lobby, n_agents, n_infected_agents, n_negative_agents, who_knows_who, who_meets_who, 0),
-            create_params("sim4.txt", prob4, q_size_of_lobby, n_agents, n_infected_agents, n_negative_agents, who_knows_who, who_meets_who, 0),
+            create_params("sim1.txt", prob1, q_size_of_lobby, n_agents, n_infected_agents, n_negative_agents, who_knows_who, who_meets_who, n_steps),
+            create_params("sim2.txt", prob2, q_size_of_lobby, n_agents, n_infected_agents, n_negative_agents, who_knows_who, who_meets_who, n_steps),
+            create_params("sim3.txt", prob3, q_size_of_lobby, n_agents, n_infected_agents, n_negative_agents, who_knows_who, who_meets_who, n_steps),
+            create_params("sim4.txt", prob4, q_size_of_lobby, n_agents, n_infected_agents, n_negative_agents, who_knows_who, who_meets_who, n_steps),
     };
 
     // run simulation
