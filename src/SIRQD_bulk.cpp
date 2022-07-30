@@ -73,43 +73,24 @@ struct SimulationState{
 };
 
 
-inline uint16_t rand_int(uint16_t max_range=0xffff){
-    return rand() % max_range;
-}
+void populate_with_infected_agents(std::unique_ptr<Agent[]> & agents,
+                                   uint16_t n_agents, uint16_t how_many_infected,
+                                   bool shuffle=true)
+                                   {
+    for (uint16_t i = 0; i < how_many_infected; ++i)
+        agents[i].state = State::Infected;
 
-inline bool is_true(float probability){
-    uint16_t n = 0xffff;
-    uint16_t x = rand_int(n);
-    int compare_to = (int) (probability * (float) n) ;
-    return x < compare_to;
-}
-
-
-void populate_with_infected_agents(std::unique_ptr<Agent[]> & agents, uint16_t n_agents, uint16_t how_many_infected){
-    uint16_t base = 0;
-    uint16_t pos;
-    uint16_t step = n_agents/how_many_infected;
-    uint16_t chunk = 0;
-    while (chunk < how_many_infected){
-        pos = base + rand_int(step);
-        agents[pos].state = State::Infected;
-        base += step;
-        ++chunk;
-    }
+    if (shuffle) random_shuffle(agents, n_agents);
 }
 
 
-void populate_with_negative_agents(std::unique_ptr<Agent[]> & agents, uint16_t n_agents, uint16_t how_many_negative){
-    uint16_t base = 0;
-    uint16_t pos;
-    uint16_t step = n_agents/how_many_negative;
-    uint16_t chunk = 0;
-    while (chunk < how_many_negative){
-        pos = base + rand_int(step);
-        agents[pos].opinion = 0;
-        base += step;
-        ++chunk;
-    }
+void populate_with_negative_agents(std::unique_ptr<Agent[]> & agents,
+                                   uint16_t n_agents, uint16_t how_many_negative,
+                                   bool shuffle=true){
+    for (uint16_t i = 0; i < how_many_negative; ++i)
+        agents[i].opinion = 0; // change to negative opinion
+
+    if (shuffle) random_shuffle(agents, n_agents);
 }
 
 
@@ -151,12 +132,24 @@ void run_simulation(SimulationParameters* params) {
     // populate with infected agents
     auto sim_state = SimulationState();
     populate_with_infected_agents(agents, n_agents, n_infected_agents);
-    populate_with_negative_agents(agents, n_agents, n_infected_agents);
+    populate_with_negative_agents(agents, n_agents, n_negative_agents);
 
     // at the beginning buffers need to match to avoid cyclic state swap
     for (int i = 0; i < n_agents; ++i) {
         agent_next_step[i] = agents[i];
     }
+
+    // extract weights from probabilities
+    float sum_of_weights = probabilities.beta + probabilities.mu + probabilities.gamma + probabilities.kappa;
+    if (sum_of_weights > 1)
+        return;
+
+    int weights[4];
+    float exponent_max = 256.0;
+    weights[0] = sum_of_weights * exponent_max;
+    weights[1] = probabilities.mu * exponent_max;
+    weights[2] = probabilities.gamma * exponent_max;
+    weights[3] = probabilities.kappa * exponent_max;
 
     // init log file
     std::ofstream out_file{out_file_name};
@@ -191,20 +184,22 @@ void run_simulation(SimulationParameters* params) {
                         agent_next_step[n].state = State::Infected;
                 }
 
-                // check if agent recovers with probability mu
-                if (is_true(probabilities.mu)) { // I -> R
-                    agents[i].state = State::Recovered;
-                    agent_next_step[i].state = State::Recovered;
-                }
-                // check if agent enters quarantine with probability gamma
-                else if (is_true(probabilities.gamma)) { // I -> Q
-                    agents[i].state = State::Quarantined;
-                    agent_next_step[i].state = State::Quarantined;
-                }
-                // check if agent dies with probability kappa
-                else if (is_true(probabilities.kappa)){ // I -> D
-                    agents[i].state = State::Deceased;
-                    agent_next_step[i].state = State::Deceased;
+                switch (weighted_choice(weights, 4)) {
+                    case (0):
+                        // state doesn't change
+                        break;
+                    case (1):
+                        agents[i].state = State::Recovered;
+                        agent_next_step[i].state = State::Recovered;
+                        break;
+                    case(2):
+                        agents[i].state = State::Quarantined;
+                        agent_next_step[i].state = State::Quarantined;
+                        break;
+                    case(3):
+                        agents[i].state = State::Deceased;
+                        agent_next_step[i].state = State::Deceased;
+                        break;
                 }
             }
 
@@ -213,24 +208,29 @@ void run_simulation(SimulationParameters* params) {
             if (is_true(agent_now.independence)) { // acts in conformity to the lobby
                 auto neighbouring_indexes = who_knows_who.get_all_relations(i);
 
-                if (neighbouring_indexes.size() < q_size_of_lobby) continue;
+                if (neighbouring_indexes.size() < q_size_of_lobby) continue; // skip if too little neighbours
 
                 uint16_t total_opinion = 0;
-                if (neighbouring_indexes.size() == q_size_of_lobby) { // if numer of alive agents is equal then no need to be fancy
-                    for (auto n: neighbouring_indexes){
+                if (neighbouring_indexes.size() ==
+                    q_size_of_lobby) { // if numer of alive agents is equal then no need to be fancy
+                    for (auto n: neighbouring_indexes) {
                         if (agents[n].state != State::Deceased) break;
                         else total_opinion += agents[n].opinion;
                     }
                 } else { // fancy sampling method used here
-                    std::vector<uint16_t> vector_of_indexes;
-                    vector_of_indexes.insert(vector_of_indexes.begin(), neighbouring_indexes.begin(), neighbouring_indexes.end());
-                    for (int lobby_member=0; lobby_member<q_size_of_lobby; ++lobby_member) {
-                        int j = rand_int(q_size_of_lobby - lobby_member);
-                        // update opinion
-                        auto n = vector_of_indexes[j];
-                        total_opinion += agents[n].opinion;
-                        // switch places with used element (to avoid repetitions)
-                        vector_of_indexes[j] = vector_of_indexes[q_size_of_lobby - lobby_member - 1];
+                    auto result = (int *) malloc(q_size_of_lobby * sizeof(int));
+
+                    uint16_t range = 0, rand_index;
+                    while (range < q_size_of_lobby) result[range] = neighbouring_indexes[range++];
+
+                    while (range < neighbouring_indexes.size()) {
+                        rand_index = random_bounded(range);
+                        if (rand_index < q_size_of_lobby && agents[neighbouring_indexes[rand_index]].state != State::Deceased)
+                            result[rand_index] = range;
+                    }
+
+                    for (int j = 0; j < q_size_of_lobby; ++j) {
+                        if (agents[result[j]].state != State::Deceased) total_opinion += agents[result[j]].opinion;
                     }
                 }
 

@@ -3,14 +3,16 @@
 
 #include <iostream>
 #include "SortedSparseMatrix.h"
+#include "fast_random.h"
+
 struct SimulationParameters;
 
 
 struct SimulationProbabilities{
     float beta = 1.0; // probability of infection
-    float mu = 1.0; // probability to recover
-    float gamma = 1.0; // probability to enter quarantine
-    float kappa = 1.0; // risk of death
+    float mu = .0; // probability to recover
+    float gamma = .0; // probability to enter quarantine
+    float kappa = .0; // risk of death
 
     friend std::ostream& operator<<(std::ostream& stream, SimulationProbabilities& state){
         stream << "beta:" << state.beta << ", "
