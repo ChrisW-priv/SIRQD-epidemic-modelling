@@ -1,6 +1,8 @@
 #include <iostream>
+#include <random>
 #include <thread>
 #include "SIRQD_bulk.h"
+#include "double_buffer.h"
 
 
 enum State{
@@ -44,13 +46,13 @@ struct SimulationState{
     uint16_t NumberOfPositiveOpinions = 0;
 
     /// modifies the state of Simulation state to match how many agents there are of given state
-    void count_states(std::unique_ptr<Agent[]> & agents, uint16_t n_agents){
+    void count_states(DoubleBuffer<Agent>& agents){
         uint16_t help_arr[5]{};
         NumberOfPositiveOpinions = 0;
 
-        for (uint16_t i=0;i<n_agents;++i){
-            help_arr[agents[i].state] += 1;
-            NumberOfPositiveOpinions += agents[i].opinion;
+        for (auto agent: agents){
+            help_arr[agent.state] += 1;
+            NumberOfPositiveOpinions += agent.opinion;
         }
 
         Susceptible = help_arr[0];
@@ -73,24 +75,24 @@ struct SimulationState{
 };
 
 
-void populate_with_infected_agents(std::unique_ptr<Agent[]> & agents,
-                                   uint16_t n_agents, uint16_t how_many_infected,
+void populate_with_infected_agents(DoubleBuffer<Agent>& agents,
+                                   uint16_t how_many_infected,
                                    bool shuffle=true)
                                    {
     for (uint16_t i = 0; i < how_many_infected; ++i)
         agents[i].state = State::Infected;
 
-    if (shuffle) random_shuffle(agents, n_agents);
+    if (shuffle) std::shuffle(agents.begin(), agents.end(), std::mt19937(std::random_device()()));
 }
 
 
-void populate_with_negative_agents(std::unique_ptr<Agent[]> & agents,
-                                   uint16_t n_agents, uint16_t how_many_negative,
+void populate_with_negative_agents(DoubleBuffer<Agent>& agents,
+                                   uint16_t how_many_negative,
                                    bool shuffle=true){
     for (uint16_t i = 0; i < how_many_negative; ++i)
         agents[i].opinion = 0; // change to negative opinion
 
-    if (shuffle) random_shuffle(agents, n_agents);
+    if (shuffle) std::shuffle(agents.begin(), agents.end(), std::mt19937(std::random_device()()));
 }
 
 
@@ -114,7 +116,7 @@ create_params(const char *out_file_name, SimulationProbabilities probabilities, 
 void run_simulation(SimulationParameters* params) {
     // init params for easier use later
     const std::string& out_file_name = params->out_file_name;
-    uint16_t n_agents = params->n_agents;
+    const uint16_t n_agents = params->n_agents;
     uint8_t q_size_of_lobby = params->q_size_of_lobby;
     uint16_t n_infected_agents = params->n_infected_agents;
     uint16_t n_negative_agents = params->n_negative_agents;
@@ -124,20 +126,14 @@ void run_simulation(SimulationParameters* params) {
     uint8_t n_steps = params->n_steps;
 
     // init agent array
-    std::unique_ptr<Agent[]> agents{new Agent[n_agents]{}};
-
-    // init next_state buffer
-    std::unique_ptr<Agent[]> agent_next_step{new Agent[n_agents]{}};
-
+    DoubleBuffer<Agent> agents{n_agents};
     // populate with infected agents
     auto sim_state = SimulationState();
     populate_with_infected_agents(agents, n_agents, n_infected_agents);
     populate_with_negative_agents(agents, n_agents, n_negative_agents);
 
     // at the beginning buffers need to match to avoid cyclic state swap
-    for (int i = 0; i < n_agents; ++i) {
-        agent_next_step[i] = agents[i];
-    }
+    agents.match_buffers();
 
     // extract weights from probabilities
     float sum_of_weights = probabilities.beta + probabilities.mu + probabilities.gamma + probabilities.kappa;
@@ -155,7 +151,7 @@ void run_simulation(SimulationParameters* params) {
     std::ofstream out_file{out_file_name};
 
     out_file << "SimStep,Susceptible,Infected,Recovered,Quarantined,Deceased,NumberOfPositiveOpinions\n";
-    sim_state.count_states(agents, n_agents);
+    sim_state.count_states(agents);
     out_file << 0 << ',' << sim_state;
 
     // start simulation
@@ -181,24 +177,25 @@ void run_simulation(SimulationParameters* params) {
 
                     // S -> I
                     if (agents[n].state == State::Susceptible && is_true(infection_spread_risk))
-                        agent_next_step[n].state = State::Infected;
+                        agents.at_next(n).state = State::Infected;
                 }
 
                 switch (weighted_choice(weights, 4)) {
                     case (0):
                         // state doesn't change
+                        // TODO: here just set the value of current state - this way we can optimise out the setting values for both arrays
                         break;
                     case (1):
                         agents[i].state = State::Recovered;
-                        agent_next_step[i].state = State::Recovered;
+                        agents.at_next(i).state = State::Recovered;
                         break;
                     case(2):
                         agents[i].state = State::Quarantined;
-                        agent_next_step[i].state = State::Quarantined;
+                        agents.at_next(i).state = State::Quarantined;
                         break;
                     case(3):
                         agents[i].state = State::Deceased;
-                        agent_next_step[i].state = State::Deceased;
+                        agents.at_next(i).state = State::Deceased;
                         break;
                 }
             }
@@ -234,20 +231,20 @@ void run_simulation(SimulationParameters* params) {
                     }
                 }
 
-                if (total_opinion == 0) agent_next_step[i].opinion = 0;
-                else if (total_opinion == q_size_of_lobby) agent_next_step[i].opinion = 1;
+                if (total_opinion == 0) agents.at_next(i).opinion = 0;
+                else if (total_opinion == q_size_of_lobby) agents.at_next(i).opinion = 1;
 
             } else { // doesn't act in conformity to the lobby
                 if (is_true(0.5)) // flip opinion with fifty-fifty probability
-                    agent_next_step[i].opinion = 1 - agents[i].opinion;
+                    agents.at_next(i).opinion = 1 - agents[i].opinion;
             }
 
         }
         // swap buffers for next step
-        agent_next_step.swap(agents);
+        agents.swap_buffers();
 
         // get number of agents in each state
-        sim_state.count_states(agents, n_agents);
+        sim_state.count_states(agents);
 
         // log step state to file
         out_file << sim_step_number << ',' << sim_state;

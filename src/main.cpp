@@ -10,6 +10,7 @@ int main() {
     constexpr uint16_t n_infected_agents = 500;
     constexpr uint16_t n_negative_agents = 500;
     constexpr uint8_t q_size_of_lobby = 10;
+    constexpr uint8_t n_layers_we_average_over = 5;
 
     // init adjacency matrix
     SortedSparseMatrix who_knows_who{n_agents, 20 * n_agents};

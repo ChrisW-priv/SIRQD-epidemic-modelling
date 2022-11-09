@@ -7,4 +7,4 @@ set(CMAKE_CXX_STANDARD 20)
 add_executable(${PROJECT_NAME} src/main.cpp src/SIRQD_bulk.cpp src/SIRQD_bulk.h)
 target_compile_options(${PROJECT_NAME} PUBLIC "-O3")
 
-add_subdirectory(src)
+add_subdirectory(include)
