@@ -27,9 +27,9 @@ inline uint32_t random_bounded(uint32_t range) {
 /// \param cut_off limits number of elements taken from stream
 /// \return pointer to first element chosen
 template<typename T>
-T* reservoir_sampling(const T* stream, size_t k, size_t cut_off)
+std::unique_ptr<T[]> reservoir_sampling(const T* stream, size_t k, size_t cut_off)
 {
-    T* result = (T*) malloc(k*sizeof(T));
+    std::unique_ptr<T[]> result{ new T[k] };
 
     size_t i=0, rand_index;
     while (i<k) result[i] = stream[i++];
@@ -47,9 +47,9 @@ T* reservoir_sampling(const T* stream, size_t k, size_t cut_off)
 /// \param k number of elements chosen
 /// \return pointer to first element chosen
 template<typename T, typename Iter>
-T* reservoir_sampling(Iter begin, Iter end, size_t k)
+std::unique_ptr<T[]> reservoir_sampling(Iter begin, Iter end, size_t k)
 {
-    T* result = (T*) malloc(k*sizeof(T));
+    std::unique_ptr<T[]> result{ new T[k] };
 
     size_t i=0, rand_index;
     for (Iter curr = begin; curr!=end; ++curr){
