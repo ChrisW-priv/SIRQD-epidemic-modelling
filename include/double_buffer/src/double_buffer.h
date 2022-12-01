@@ -8,20 +8,20 @@ template<class T>
 class DoubleBuffer{
     size_t N;
     // allocate space for buffers:
-    std::unique_ptr<T[]> current{new T[N]};
-    std::unique_ptr<T[]> next{new T[N]};
+    std::unique_ptr<T[]> current = nullptr;
+    std::unique_ptr<T[]> next = nullptr;
 
     typedef T* iterator;
     typedef const T* const_iterator;
 
 public:
-    explicit DoubleBuffer(size_t size) : N(size) {
+    explicit DoubleBuffer(size_t size) : N(size), current(new T[N]), next(new T[N]){
         size_t i=0;
         while (i<N) current[i++] = T{};
         match_buffers();
     }
 
-    DoubleBuffer(DoubleBuffer const &other) : N(other.N){
+    DoubleBuffer(DoubleBuffer const &other) : N(other.N), current(new T[N]), next(new T[N]){
         size_t i=0;
         while (i<N){
             current[i] = other.current[i];
@@ -35,7 +35,7 @@ public:
     }
 
     template<class Iter>
-    DoubleBuffer(Iter begin, Iter end){
+    DoubleBuffer(Iter begin, Iter end) : N(std::distance(begin, end)), current(new T[N]), next(new T[N]){
         size_t i=0;
         while (begin != end) {
             current[i] = *begin;
@@ -52,13 +52,13 @@ public:
     }
 
     T& operator[](size_t index){ return current[index]; }
-    void set_next(size_t index, T value){ next[index] = value; }
+    T& at_curr(size_t index){ return current[index]; }
     T& at_next(size_t index){ return next[index]; }
 
     // iterators for range base loops
     iterator begin() { return &current[0]; }
-    const_iterator cbegin() const { return &current[0]; }
     iterator end() { return &current[N]; }
+    const_iterator cbegin() const { return &current[0]; }
     const_iterator cend() const { return &current[N]; }
 };
 
