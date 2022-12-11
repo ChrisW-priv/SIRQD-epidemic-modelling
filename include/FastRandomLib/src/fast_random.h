@@ -3,43 +3,9 @@
 
 #include <cstdint>
 #include <algorithm>
+#include <random>
+#include <memory>
 
-/// HERE WE CHOOSE OUR RANDOM 32 BIT INT CREATOR
-/// for now we still use the default rand() function
-/// TODO: change this later to better alternatives
-#define rand32() ( rand() )
-
-/// random float in range <0,1>
-#define rand_float() ( ((float)rand32() / (float)0xffffffff) )
-
-/// returns 32 bit int that is no bigger than range given
-/// \param range max int that bounds the range
-/// \return integer in range <0, range)
-inline uint32_t random_bounded(uint32_t range) {
-    uint64_t random32bit = rand32(); //32-bit random number
-    uint64_t multiresult = random32bit * range;
-    return multiresult >> 32;
-}
-
-/// uses R algorithm for reservoir sampling given a pointer to stream of data
-/// \param stream pointer to first element
-/// \param k number of elements chosen
-/// \param cut_off limits number of elements taken from stream
-/// \return pointer to first element chosen
-template<typename T>
-std::unique_ptr<T[]> reservoir_sampling(const T* stream, size_t k, size_t cut_off)
-{
-    std::unique_ptr<T[]> result{ new T[k] };
-
-    size_t i=0, rand_index;
-    while (i<k) result[i] = stream[i++];
-
-    while (i < cut_off) {
-        rand_index = random_bounded(i);
-        if (rand_index < k) result[rand_index] = stream[i++];
-    }
-    return result;
-}
 
 /// uses R algorithm for reservoir sampling given a pointer to stream of data
 /// \param begin Iterator of container
@@ -47,24 +13,27 @@ std::unique_ptr<T[]> reservoir_sampling(const T* stream, size_t k, size_t cut_of
 /// \param k number of elements chosen
 /// \return pointer to first element chosen
 template<typename T, typename Iter>
-std::unique_ptr<T[]> reservoir_sampling(Iter begin, Iter end, size_t k)
+std::unique_ptr<T[]> reservoir_sampling(Iter begin, Iter end, size_t k, std::mt19937 generator = std::mt19937{std::random_device{}()})
 {
     std::unique_ptr<T[]> result{ new T[k] };
 
     size_t i=0, rand_index;
-    for (Iter curr = begin; curr!=end; ++curr){
-        if (i<k) result[i] = *curr;
-        rand_index = random_bounded(i);
+    Iter curr = begin;
+    while (i<k) {
+        result[i] = *curr;
+        ++i; ++curr;
+    }
+    while (curr!=end){
+        rand_index = std::uniform_int_distribution<uint32_t>{1,static_cast<uint32_t>(i)}(generator) - 1; // I want it <0-i) not <1,i>
         if (rand_index < k) result[rand_index] = *curr;
-        ++i;
+        ++i; ++curr;
     }
 
     return result;
 }
 
-int weighted_choice(std::initializer_list<float> probabilities);
+int weighted_choice(std::initializer_list<float> probabilities, std::mt19937& generator);
 
-bool is_true(float probability);
-
+bool is_true(float probability, std::mt19937& generator);
 
 #endif //SIRQD_EPIDEMIC_MODELLING_FAST_RANDOM_H

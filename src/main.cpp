@@ -1,4 +1,5 @@
 #include <iostream>
+#include <random>
 #include "SortedSparseMatrix.h"
 #include "SIRQD_bulk.h"
 #include "double_buffer.h"
@@ -16,18 +17,22 @@ int main() {
     const char * import_filename_opinion{"../data/who_knows_who1.txt" };
     const char * import_filename_epidemic{ "../data/who_meets_who1.txt" };
     const char * log_file_name{"C:/Users/Chris/SIRQD-epidemic-modelling/results/sim1.txt"};
-    constexpr float probability_of_infection = 0;
-    constexpr float probability_of_recovery = 1;
+    constexpr float probability_of_infection = 0.5;
+    constexpr float probability_of_recovery = 0.5;
     constexpr float probability_of_quarantine = 0;
     constexpr float probability_of_death = 0;
+    constexpr int seed=10;
+
+    // Create a random number generator
+    std::mt19937 generator{seed};
 
     // init agent array
     DoubleBuffer<Agent> agents{n_agents};
 
     //change states of the agents depending on the init values of the simulation
-    populate_with_infected_agents(agents, n_infected_agents);
-    populate_with_negative_agents(agents, n_negative_agents);
-    populate_with_independent_agents(agents, n_independent_agents);
+    populate_with_infected_agents(agents, n_infected_agents, generator, true);
+    populate_with_negative_agents(agents, n_negative_agents, generator, true);
+    populate_with_independent_agents(agents, n_independent_agents, generator, true);
 
     // at the beginning buffers need to match to avoid cyclic state swap
     agents.match_buffers();
@@ -77,7 +82,7 @@ int main() {
                     // check if someone will get sick based on infection probability
 
                     // S -> I
-                    if (agents[n].state == State::Susceptible && is_true(infection_spread_risk))
+                    if (agents[n].state == State::Susceptible && is_true(infection_spread_risk, generator))
                         agents.at_next(n).state = State::Infected;
                 }
 
@@ -85,7 +90,7 @@ int main() {
                     1 - (probability_of_recovery + probability_of_quarantine + probability_of_death),
                     probability_of_recovery, probability_of_quarantine, probability_of_death
                 };
-                switch (weighted_choice(list)) {
+                switch (weighted_choice(list, generator)) {
                     case (0):
                         // state doesn't change
                         agents.at_next(agent_index).state = State::Infected;
@@ -104,7 +109,7 @@ int main() {
 
             // OPINION LAYER
 
-            if (is_true(agent_now.independence)) { // acts in conformity to the lobby
+            if (is_true(agent_now.independence, generator)) { // acts in conformity to the lobby
                 auto neighbouring_indexes = opinion_layer_graph.get_all_relations(agent_index);
 
                 // first - filter all dead agents to simplify things later (dead people can't influence opinions)
@@ -120,7 +125,7 @@ int main() {
                     for (auto n: filtered_agents) total_opinion += agents[n].opinion;
                 } else { // fancy sampling method used here
                     auto result = reservoir_sampling<uint16_t>(filtered_agents.begin(), filtered_agents.end(),
-                                                               q_size_of_lobby);
+                                                               q_size_of_lobby, generator);
 
                     for (int i = 0; i < q_size_of_lobby; ++i) {
                         auto agent_chosen_in_lobby = agents.at_curr(result[i]);
@@ -132,7 +137,7 @@ int main() {
                 else if (total_opinion == q_size_of_lobby) agents.at_next(agent_index).opinion = 1;
 
             } else { // doesn't act in conformity to the lobby
-                if (is_true(0.5)) // flip opinion with fifty-fifty probability
+                if (is_true(0.5, generator)) // flip opinion with fifty-fifty probability
                     agents.at_next(agent_index).opinion = 1 - agents[agent_index].opinion;
             }
 

@@ -63,8 +63,8 @@ struct SimulationState{
 };
 
 
-void populate_with_infected_agents(DoubleBuffer<Agent>& agents, uint16_t how_many_infected, bool shuffle=true);
-void populate_with_negative_agents(DoubleBuffer<Agent>& agents, uint16_t how_many_negative, bool shuffle=true);
-void populate_with_independent_agents(DoubleBuffer<Agent>& agents, uint16_t how_many_independent, bool shuffle=true);
+void populate_with_infected_agents(DoubleBuffer<Agent>& agents, uint16_t how_many_infected, std::mt19937 generator, bool shuffle=true);
+void populate_with_negative_agents(DoubleBuffer<Agent>& agents, uint16_t how_many_negative, std::mt19937 generator, bool shuffle=true);
+void populate_with_independent_agents(DoubleBuffer<Agent>& agents, uint16_t how_many_independent, std::mt19937 generator, bool shuffle=true);
 
 #endif //SIRQD_EPIDEMIC_MODELLING_SIRQD_BULK_H
