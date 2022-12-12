@@ -6,6 +6,11 @@
 #include "fast_random.h"
 
 
+void do_computation(uint16_t n_agents,  uint8_t n_steps, uint16_t n_infected_agents,  uint16_t n_negative_agents,
+         uint16_t n_independent_agents,  uint8_t q_size_of_lobby, const char *import_filename_opinion,
+         const char *import_filename_epidemic, const char *log_file_name, float probability_of_infection,
+         float probability_of_recovery,  float probability_of_quarantine,  float probability_of_death, int seed);
+
 int main() {
     // init parameters of the simulation
     constexpr uint16_t n_agents = 10'000;
@@ -23,8 +28,18 @@ int main() {
     constexpr float probability_of_death = 0;
     constexpr int seed=10;
 
+    do_computation(n_agents, n_steps, n_infected_agents, n_negative_agents, n_independent_agents, q_size_of_lobby,
+        import_filename_opinion, import_filename_epidemic, log_file_name, probability_of_infection,
+        probability_of_recovery, probability_of_quarantine, probability_of_death, seed);
+}
+
+void do_computation(uint16_t n_agents,  uint8_t n_steps, uint16_t n_infected_agents,  uint16_t n_negative_agents,
+        uint16_t n_independent_agents,  uint8_t q_size_of_lobby, const char *import_filename_opinion,
+        const char *import_filename_epidemic, const char *log_file_name, float probability_of_infection,
+        float probability_of_recovery,  float probability_of_quarantine,  float probability_of_death, int seed){
+
     // Create a random number generator
-    std::mt19937 generator{seed};
+    std::mt19937 generator(seed);
 
     // init agent array
     DoubleBuffer<Agent> agents{n_agents};
@@ -65,12 +80,12 @@ int main() {
             agents.at_next(agent_index) = agent_now;
 
             // if current agent is dead - continue to the next agent, no need to handle him
-            if (agent_now.state == State::Deceased) continue;
+            if (agent_now.state == Deceased) continue;
 
             // EPIDEMIC LAYER
 
             // handle states of the agent
-            if (agent_now.state == State::Infected){
+            if (agent_now.state == Infected){
                 // infection spread changes based on opinion of the carrier
                 auto infection_spread_risk = agent_now.opinion == 1 ? probability_of_infection : probability_of_infection/2;
 
@@ -82,8 +97,8 @@ int main() {
                     // check if someone will get sick based on infection probability
 
                     // S -> I
-                    if (agents[n].state == State::Susceptible && is_true(infection_spread_risk, generator))
-                        agents.at_next(n).state = State::Infected;
+                    if (agents[n].state == Susceptible && is_true(infection_spread_risk, generator))
+                        agents.at_next(n).state = Infected;
                 }
 
                 std::initializer_list<float> list{
@@ -93,16 +108,16 @@ int main() {
                 switch (weighted_choice(list, generator)) {
                     case (0):
                         // state doesn't change
-                        agents.at_next(agent_index).state = State::Infected;
+                        agents.at_next(agent_index).state = Infected;
                         break;
                     case (1):
-                        agents.at_next(agent_index).state = State::Recovered;
+                        agents.at_next(agent_index).state = Recovered;
                         break;
                     case(2):
-                        agents.at_next(agent_index).state = State::Quarantined;
+                        agents.at_next(agent_index).state = Quarantined;
                         break;
                     case(3):
-                        agents.at_next(agent_index).state = State::Deceased;
+                        agents.at_next(agent_index).state = Deceased;
                         break;
                 }
             }
@@ -116,7 +131,7 @@ int main() {
                 std::vector<uint16_t> filtered_agents;
                 std::copy_if(neighbouring_indexes.begin(), neighbouring_indexes.end(),
                              std::back_inserter(filtered_agents),
-                             [&agents](uint16_t index){ return agents[index].state != State::Deceased; } );
+                             [&agents](uint16_t index){ return agents[index].state != Deceased; } );
 
                 if (filtered_agents.size() < q_size_of_lobby) continue; // skip if too little neighbours
 
@@ -154,7 +169,4 @@ int main() {
         // go to next sim step
         sim_step_number++;
     }
-
-
-    return 0;
 }
