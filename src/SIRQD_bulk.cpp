@@ -1,6 +1,7 @@
 #include <iostream>
 #include <random>
 #include "SIRQD_bulk.h"
+#include "../include/double_buffer/src/double_buffer.h"
 
 
 void populate_with_infected_agents(DoubleBuffer<Agent>& agents, uint16_t how_many_infected, std::mt19937 generator, bool shuffle)
